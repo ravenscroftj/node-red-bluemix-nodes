@@ -1,0 +1,86 @@
+<!--
+  Copyright 2015 IBM Corp.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<script type="text/x-red" data-template-name="watson-natural-language-classifier">
+    <div id="credentials-check" class="form-row">
+        <div class="form-tips">
+            <i class="fa fa-question-circle"></i><b> Please wait: </b> Checking for bound service credentials...
+        </div>
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row credentials" style="display: none;">
+        <label for="node-input-username"><i class="fa fa-user"></i> Username</label>
+        <input type="text" id="node-input-username" placeholder="Username">
+    </div>
+    <div class="form-row credentials" style="display: none;">
+        <label for="node-input-password"><i class="fa fa-key"></i> Password</label>
+        <input type="password" id="node-input-password" placeholder="Password">
+    </div>
+
+    <div class="form-row credentials" style="display: none;">
+        <label for="node-input-classifier"><i class="fa fa-line-chart"></i> Classifier ID</label>
+        <input type="text" id="node-input-classifier" placeholder="Classifier ID">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="watson-natural-language-classifier">
+    <p> The service interprets the intent behind text and returns a corresponding classification with associated confidence levels.</p>
+    <p>The text to classify should be passed in on <b>msg.payload</b>.</p>
+    <p>The classification results will be returned on  <b>msg.classes</b>.</p>
+    <p>You can specify your classifier ID via the node config or override it using <b>msg.classifier</b></p>
+    <p>For more information about the Natural Language Classifier service, read the <a href="http://www.ibm.com/smarterplanet/us/en/ibmwatson/developercloud/nl-classifier.html">documentation</a>.</p>
+</script>
+
+<script type="text/javascript">
+    (function() {
+        RED.nodes.registerType('watson-natural-language-classifier', {
+            category: 'IBM Watson',
+            defaults: {
+                name: {value: ""}
+            },
+            credentials: {
+              username: {type:"text"},
+              password: {type:"password"},
+              classifier: {type:"text"},
+            },
+            color: "rgb(65, 120, 189)",
+            inputs: 1,
+            outputs: 1,
+            icon: "nlc.png",
+            paletteLabel: "natural language classifier",
+            label: function() {
+                return this.name || "natural language classifier";
+            },
+            labelStyle: function() {
+                return this.name ? "node_label_italic" : "";
+            },
+            oneditprepare: function() {
+                $.getJSON('ibmwatson-nlc-classifier/vcap/')
+                  .done(function (service) {
+                    $('.credentials').toggle(!service);
+                  })
+                  .fail(function () {
+                    $('.credentials').show();
+                  }).always(function () {
+                    $('#credentials-check').hide();
+                  })
+            }
+        });
+    })();
+</script>
