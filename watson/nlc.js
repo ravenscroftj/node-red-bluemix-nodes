@@ -1,5 +1,5 @@
 /**
- * Copyright 2015 IBM Corp.
+ * Copyright 2013,2015 IBM Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,81 +17,82 @@
 module.exports = function (RED) {
   var cfenv = require('cfenv');
 
-  var services = cfenv.getAppEnv().services, 
+  var services = cfenv.getAppEnv().services,
     service;
 
   var username, password;
 
-  var service = cfenv.getAppEnv().getServiceCreds(/natural_language_classifier/i)
+  var service = cfenv.getAppEnv().getServiceCreds(/natural language classifier/i)
 
   if (service) {
     username = service.username;
     password = service.password;
   }
 
-  RED.httpAdmin.get('/ibmwatson-nlc-classifier/vcap/', function (req, res) {
+  RED.httpAdmin.get('/watson-natural-language-classifier/vcap', function (req, res) {
     res.json(service ? {bound_service: true} : null);
   });
 
-  function Node(config) {
-    RED.nodes.createNode(this,config);
+  function Node (config) {
+    RED.nodes.createNode(this, config);
     var node = this;
 
     this.on('input', function (msg) {
       if (!msg.payload) {
-        node.error('Missing property: msg.payload');
+        var message = 'Missing property: msg.payload';
+        node.error(message, msg);
         return;
-      }
-
-
-      if (!msg.classifier && !this.credentials.classifier ) {
-        node.error("Missing natural language classifier ID")
-      }else if(!msg.classifier) {
-        msg.classifier = this.credentials.classifier;
       }
 
       username = username || this.credentials.username;
       password = password || this.credentials.password;
 
       if (!username || !password) {
-        node.error('Missing natural langauge classifier service credentials');
+        var message = 'Missing Natural Language Classifier credentials';
+        node.error(message, msg);
         return;
       }
- 
+
       var watson = require('watson-developer-cloud');
 
-      var nlClassifier = watson.natural_language_classifier({
+      var natural_language_classifier = watson.natural_language_classifier({
         username: username,
         password: password,
         version: 'v1'
-
       });
 
-      var params = {
-        classifier: msg.classifier,
-        text: msg.payload
+      var params = {}
+
+      if (config.mode === 'classify') {
+         params.text = msg.payload;
+         params.classifier_id = config.classifier;
+      } else if (config.mode === 'create') {
+        params.training_data = msg.payload;
+        params.language = config.language;
+      } else {
+        var message = 'Unknown Natural Language Classification mode, ' + config.mode;
+        node.error(message, msg);
+        return;
       }
 
-      nlClassifier.classify(params, function(err,results){
-      
-        if(err){
-            node.error(err)
-        }else{
-            msg.classes = results.classes 
+      node.status({fill:"blue", shape:"dot", text:"requesting"});
+      natural_language_classifier[config.mode](params, function (err, response) {
+        node.status({})
+        if (err) {
+          node.error(err, msg);
+        } else {
+          msg.payload = (config.mode === 'classify') ? 
+            {classes: response.classes, top_class: response.top_class} : response;
         }
 
         node.send(msg);
-      
-      })
-
-
+      });
     });
   }
-  RED.nodes.registerType("watson-natural-language-classifier",Node,{
-     credentials: {
+  RED.nodes.registerType('watson-natural-language-classifier', Node, {
+    credentials: {
       username: {type:"text"},
-      password: {type:"password"},
-      classifier: {type:"text"}
+      password: {type:"password"}
     }
   });
 };

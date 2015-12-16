@@ -39,7 +39,8 @@ module.exports = function (RED) {
 
     this.on('input', function (msg) {
       if (!msg.payload) {
-        node.error('Missing property: msg.payload');
+        var message = 'Missing property: msg.payload';
+        node.error(message, msg);
         return;
       }
 
@@ -47,7 +48,8 @@ module.exports = function (RED) {
       password = password || this.credentials.password;
 
       if (!username || !password) {
-        node.error('Missing Language Identification service credentials');
+        var message = 'Missing Language Identification service credentials';
+        node.error(message, msg);
         return;
       }
 
@@ -59,9 +61,11 @@ module.exports = function (RED) {
         version: 'v2'
       });
 
+      node.status({fill:"blue", shape:"dot", text:"requesting"});
       language_translation.identify({text: msg.payload}, function (err, response) {
+        node.status({})
         if (err) {
-          node.error(err);
+          node.error(err, msg);
         } else {
           msg.lang = response.languages[0];
         }
